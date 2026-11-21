@@ -1,8 +1,8 @@
 # Homelab Kubernetes GitOps Monorepo
 
-A single-node **Kubernetes (`k3s`) + GitOps (`Argo CD`)** homelab managed declaratively from this repository, featuring:
+A multi-node, mixed-architecture **Kubernetes (`k3s`) + GitOps (`Argo CD`)** homelab (`pc` amd64 control-plane/worker + `pi` arm64 worker) managed declaratively from this repository, featuring:
 
-- **Cluster**: Single-node [k3s](https://k3s.io/) on Ubuntu Linux with built-in `local-path` persistent storage
+- **Cluster**: Two-node [k3s](https://k3s.io/) cluster (`pc` Ubuntu x86_64 server + `pi` Raspberry Pi ARM64 agent) with built-in `local-path` persistent storage and `nodeSelector` workload pinning
 - **GitOps**: [Argo CD](https://argo-cd.readthedocs.io/) using the **App-of-Apps** pattern with Sync Waves
 - **Secrets Management**: [External Secrets Operator (ESO)](https://external-secrets.io/) synced from **AWS Systems Manager (SSM) Parameter Store** (Standard `SecureString` — $0/mo, zero plaintext secrets in Git)
 - **Networking & HTTPS**: [Tailscale Kubernetes Operator](https://tailscale.com/kb/1236/kubernetes-operator) — fully containerized Tailscale proxies giving every app a private `https://<app>.<tailnet>.ts.net` URL with automatic TLS and zero open router ports
@@ -67,8 +67,9 @@ Argo CD (root-app / App-of-Apps)
 ## Migration Roadmap
 
 - [x] Core platform architecture (`k3s` + `Argo CD` + `ESO` + `AWS SSM` + `Tailscale Operator`)
-- [x] Pilot app: **Beszel Hub** (`apps/beszel`)
-- [ ] **Jellyfin** + Intel iGPU (`/dev/dri/renderD128`) device plugin + S3 Glacier backup `CronJob`
-- [ ] **Immich** (Server + OpenVINO ML + VectorChord Postgres + Valkey) + S3 Glacier backup `CronJob`
-- [ ] **Nextcloud** (App + Cron + Postgres + Redis)
+- [x] Pilot app: **Beszel Hub** (`apps/beszel`, pinned to `pc`)
+- [ ] Join **Raspberry Pi (`pi`)** worker node via [bootstrap/scripts/join-pi.sh](bootstrap/scripts/join-pi.sh) + deploy **Home Assistant** (pinned to `pi`)
+- [ ] **Jellyfin** + Intel iGPU (`/dev/dri/renderD128`) device plugin + S3 Glacier backup `CronJob` (pinned to `pc`)
+- [ ] **Immich** (Server + OpenVINO ML + VectorChord Postgres + Valkey) + S3 Glacier backup `CronJob` (pinned to `pc`)
+- [ ] **Nextcloud** (App + Cron + Postgres + Redis) (pinned to `pc`)
 - [ ] Automated dependency PRs via **Renovate**

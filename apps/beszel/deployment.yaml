@@ -19,6 +19,10 @@ spec:
       labels:
         app.kubernetes.io/name: beszel-hub
     spec:
+      # Pin stateful local-path workloads to the `pc` node so the pod always
+      # schedules onto the machine that holds its local disk volume.
+      nodeSelector:
+        kubernetes.io/hostname: pc
       containers:
         - name: beszel-hub
           image: henrygd/beszel:0.21.1
