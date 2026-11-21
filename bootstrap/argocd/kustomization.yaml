@@ -4,7 +4,7 @@ kind: Kustomization
 namespace: argocd
 
 resources:
-  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.3/manifests/install.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.6.2/manifests/install.yaml
 
 # Run argocd-server in insecure (HTTP) mode internally because the
 # Tailscale Kubernetes Operator terminates TLS at the Ingress edge.
