@@ -1,0 +1,17 @@
+# Exposes Beszel Hub privately on your Tailnet at:
+#   https://beszel.<your-tailnet>.ts.net
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: beszel-hub
+  namespace: beszel
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - beszel
+  defaultBackend:
+    service:
+      name: beszel-hub
+      port:
+        number: 8090

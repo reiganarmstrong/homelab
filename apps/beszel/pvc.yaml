@@ -1,0 +1,14 @@
+# PersistentVolumeClaim using k3s's built-in `local-path` StorageClass.
+# Keeps Beszel's PocketBase/SQLite data across pod restarts and upgrades.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: beszel-data
+  namespace: beszel
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

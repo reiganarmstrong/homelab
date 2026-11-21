@@ -1,0 +1,13 @@
+# Local secrets & environment files (never commit!)
+.env
+.env.*
+*.secret.yaml
+*kubeconfig*
+kubeconfig
+
+# Editor & OS files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.tmp

@@ -1,0 +1,46 @@
+# Multi-source Argo CD Application:
+# 1. Deploys the ExternalSecret that pulls Tailscale OAuth credentials from AWS SSM.
+# 2. Installs the official Tailscale Kubernetes Operator Helm chart.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/reiganarmstrong/homelab.git
+      targetRevision: main
+      path: infrastructure/tailscale-operator
+    - repoURL: https://pkgs.tailscale.com/helmcharts
+      chart: tailscale-operator
+      targetRevision: 1.80.3
+      helm:
+        releaseName: tailscale-operator
+        valuesObject:
+          operatorConfig:
+            hostname: homelab-k8s-operator
+            defaultTags:
+              - tag:k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tailscale
+  ignoreDifferences:
+    # The operator-oauth Secret is populated by External Secrets Operator (not Helm).
+    - group: ""
+      kind: Secret
+      name: operator-oauth
+      namespace: tailscale
+      jsonPointers:
+        - /data
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
