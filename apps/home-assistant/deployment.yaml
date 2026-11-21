@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant
+spec:
+  replicas: 1
+  # Recreate strategy is required for ReadWriteOnce (RWO) local-path volumes.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: home-assistant
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: home-assistant
+    spec:
+      # Pin Home Assistant to the Raspberry Pi (arm64) node.
+      nodeSelector:
+        kubernetes.io/hostname: pi
+      # hostNetwork enables LAN device discovery (mDNS, HomeKit, Matter, Chromecast).
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        # Seed a minimal configuration.yaml on first boot that trusts the k3s pod CIDR
+        # so Tailscale Kubernetes Operator Ingress proxying works without HTTP 400 errors.
+        - name: init-trusted-proxies
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /config/configuration.yaml ]; then
+                cat <<'EOF' > /config/configuration.yaml
+              default_config:
+
+              http:
+                use_x_forwarded_for: true
+                trusted_proxies:
+                  - 10.42.0.0/16
+                  - 127.0.0.1
+              EOF
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        - name: home-assistant
+          image: ghcr.io/home-assistant/home-assistant:stable
+          ports:
+            - name: http
+              containerPort: 8123
+              protocol: TCP
+          env:
+            - name: TZ
+              value: America/New_York
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          readinessProbe:
+            httpGet:
+              path: /manifest.json
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /manifest.json
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: home-assistant-config

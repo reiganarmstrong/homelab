@@ -25,7 +25,8 @@ jobs:
             infrastructure/external-secrets-config \
             infrastructure/tailscale-operator \
             infrastructure/argocd-ingress \
-            apps/beszel; do
+            apps/beszel \
+            apps/home-assistant; do
             echo "Building $dir..."
             kustomize build "$dir" | kubeconform \
               -strict \
