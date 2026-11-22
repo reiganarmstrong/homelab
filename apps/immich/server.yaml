@@ -20,6 +20,8 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: pc
+      # Disable legacy K8s service-link env vars (e.g. REDIS_PORT=tcp://...) which collide with Immich's REDIS_PORT.
+      enableServiceLinks: false
       terminationGracePeriodSeconds: 120
       securityContext:
         supplementalGroups:

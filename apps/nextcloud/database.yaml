@@ -56,14 +56,14 @@ spec:
             - name: POSTGRES_USER
               value: nextcloud
             - name: POSTGRES_PASSWORD_FILE
-              value: /run/secrets/postgres_password
+              value: /etc/nextcloud-secrets/postgres_password
             - name: POSTGRES_INITDB_ARGS
               value: "--data-checksums"
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
             - name: secrets
-              mountPath: /run/secrets
+              mountPath: /etc/nextcloud-secrets
               readOnly: true
             - name: dshm
               mountPath: /dev/shm

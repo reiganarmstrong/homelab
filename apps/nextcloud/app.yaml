@@ -38,13 +38,13 @@ spec:
             - name: POSTGRES_USER
               value: nextcloud
             - name: POSTGRES_PASSWORD_FILE
-              value: /run/secrets/postgres_password
+              value: /etc/nextcloud-secrets/postgres_password
             - name: REDIS_HOST
               value: redis
             - name: NEXTCLOUD_ADMIN_USER
               value: admin
             - name: NEXTCLOUD_ADMIN_PASSWORD_FILE
-              value: /run/secrets/nextcloud_admin_password
+              value: /etc/nextcloud-secrets/nextcloud_admin_password
             - name: NEXTCLOUD_INIT_HTACCESS
               value: "true"
             - name: APACHE_DISABLE_REWRITE_IP
@@ -67,7 +67,7 @@ spec:
               subPath: zz-nextcloud.ini
               readOnly: true
             - name: secrets
-              mountPath: /run/secrets
+              mountPath: /etc/nextcloud-secrets
               readOnly: true
             - name: tmp
               mountPath: /tmp
