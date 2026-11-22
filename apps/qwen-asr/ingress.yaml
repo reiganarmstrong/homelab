@@ -1,0 +1,17 @@
+# Exposes the OpenAI-compatible Qwen3-ASR transcription API privately at:
+#   https://qwen-asr.<your-tailnet>.ts.net
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: qwen-asr
+  namespace: qwen-asr
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - qwen-asr
+  defaultBackend:
+    service:
+      name: qwen-asr
+      port:
+        number: 8178

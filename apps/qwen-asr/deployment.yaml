@@ -1,0 +1,169 @@
+# OpenAI-compatible Qwen3-ASR transcription API (sidecar pattern):
+# - `qwen-backend`: runs Qwen3-ASR 1.7B on the Intel Arc A750 Vulkan GPU (localhost:8177)
+# - `openai-gateway`: authenticates Bearer tokens and exposes OpenAI API on :8178
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qwen-asr
+  namespace: qwen-asr
+  labels:
+    app.kubernetes.io/name: qwen-asr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: qwen-asr
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: qwen-asr
+    spec:
+      # Strictly pin to `pc` (Intel Arc A750 GPU + GGUF models live here; never schedule on `pi`).
+      nodeSelector:
+        kubernetes.io/hostname: pc
+      enableServiceLinks: false
+      securityContext:
+        runAsUser: 994
+        runAsGroup: 980
+        # Host `video` (44) and `render` (991) groups grant Intel Arc Vulkan GPU access.
+        supplementalGroups:
+          - 44
+          - 991
+      containers:
+        - name: qwen-backend
+          image: localhost/qwen-asr-runtime:ubuntu26.04
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "/opt/handy-stt/qwen_backend.py"]
+          workingDir: /var/lib/handy-stt
+          env:
+            - name: PYTHONPATH
+              value: /opt/handy-stt/qwen-source/bindings/python/src
+            - name: TRANSCRIBE_LIBRARY
+              value: /opt/handy-stt/qwen-build/src/libtranscribe.so
+            - name: HANDY_MODEL_PATH
+              value: /var/lib/handy-stt/models/Qwen3-ASR-1.7B-Q8_0.gguf
+            - name: HANDY_VAD_PATH
+              value: /var/lib/handy-stt/models/silero-vad-v6.2-F32.gguf
+            - name: HANDY_MODEL_ID
+              value: qwen3-asr-1.7b
+            - name: HANDY_GPU_MATCH
+              value: "Intel.*Arc"
+            - name: HANDY_THREADS
+              value: "4"
+            - name: HANDY_LANGUAGE
+              value: en
+            - name: HANDY_BACKEND_PORT
+              value: "8177"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: app-code
+              mountPath: /opt/handy-stt
+              readOnly: true
+            - name: models
+              mountPath: /var/lib/handy-stt/models
+              readOnly: true
+            - name: dri
+              mountPath: /dev/dri
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8177
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8177
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 200m
+              memory: 2Gi
+            limits:
+              memory: 6Gi
+
+        - name: openai-gateway
+          image: localhost/qwen-asr-runtime:ubuntu26.04
+          imagePullPolicy: IfNotPresent
+          command:
+            - python3
+            - -c
+            - |
+              import os, pathlib, sys
+              sys.path.insert(0, "/opt/handy-stt")
+              from http.server import ThreadingHTTPServer
+              import gateway
+              key = pathlib.Path(os.environ["HANDY_API_KEY_FILE"]).read_text().strip()
+              handler = gateway.make_handler(
+                  os.environ["HANDY_BACKEND_URL"],
+                  key,
+                  os.environ["HANDY_MODEL_ID"],
+                  timeout=int(os.environ.get("HANDY_REQUEST_TIMEOUT", "300")),
+              )
+              ThreadingHTTPServer(("0.0.0.0", int(os.environ["HANDY_API_PORT"])), handler).serve_forever()
+          ports:
+            - name: http
+              containerPort: 8178
+              protocol: TCP
+          env:
+            - name: HANDY_API_KEY_FILE
+              value: /etc/qwen-asr-secrets/api-key
+            - name: HANDY_BACKEND_URL
+              value: http://127.0.0.1:8177
+            - name: HANDY_API_PORT
+              value: "8178"
+            - name: HANDY_MODEL_ID
+              value: qwen3-asr-1.7b
+            - name: HANDY_REQUEST_TIMEOUT
+              value: "300"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: app-code
+              mountPath: /opt/handy-stt
+              readOnly: true
+            - name: secrets
+              mountPath: /etc/qwen-asr-secrets
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+
+      volumes:
+        - name: app-code
+          hostPath:
+            path: /opt/handy-stt
+            type: Directory
+        - name: models
+          hostPath:
+            path: /var/lib/handy-stt/models
+            type: Directory
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
+        - name: secrets
+          secret:
+            secretName: qwen-asr-secrets
