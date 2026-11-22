@@ -1,0 +1,46 @@
+# DaemonSet automatically schedules one Beszel Agent pod on EVERY node
+# in the cluster (both `pc` amd64 and `pi` arm64, plus any future nodes).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: beszel-agent
+  namespace: beszel
+  labels:
+    app.kubernetes.io/name: beszel-agent
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: beszel-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: beszel-agent
+    spec:
+      # hostNetwork lets Beszel Hub reach each node directly at <node-ip>:45877
+      # and lets the agent read real host network interface stats.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: beszel-agent
+          image: henrygd/beszel-agent:0.21.1
+          ports:
+            - name: agent
+              containerPort: 45877
+              hostPort: 45877
+              protocol: TCP
+          env:
+            - name: LISTEN
+              value: "45877"
+            - name: KEY
+              valueFrom:
+                secretKeyRef:
+                  name: beszel-agent-key
+                  key: key
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
