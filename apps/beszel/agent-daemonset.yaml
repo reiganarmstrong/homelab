@@ -1,5 +1,5 @@
-# DaemonSet automatically schedules one Beszel Agent pod on EVERY node
-# in the cluster (both `pc` amd64 and `pi` arm64, plus any future nodes).
+# DaemonSet automatically schedules one Beszel Agent pod on ARM64 nodes (e.g. `pi`).
+# Intel x86_64 nodes with an iGPU (like `pc`) run `beszel-agent-intel` instead.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -16,6 +16,8 @@ spec:
       labels:
         app.kubernetes.io/name: beszel-agent
     spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
       # hostNetwork lets Beszel Hub reach each node directly at <node-ip>:45877
       # and lets the agent read real host network interface stats.
       hostNetwork: true

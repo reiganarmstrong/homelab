@@ -11,3 +11,4 @@ resources:
   - ingress.yaml
   - agent-external-secret.yaml
   - agent-daemonset.yaml
+  - agent-intel-daemonset.yaml

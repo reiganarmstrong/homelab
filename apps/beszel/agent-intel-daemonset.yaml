@@ -1,0 +1,57 @@
+# Intel iGPU-enabled Beszel Agent DaemonSet for `pc` (amd64).
+# Uses `intel_gpu_top` via CAP_PERFMON + /dev/dri to report Intel GPU usage.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: beszel-agent-intel
+  namespace: beszel
+  labels:
+    app.kubernetes.io/name: beszel-agent-intel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: beszel-agent-intel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: beszel-agent-intel
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pc
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: beszel-agent
+          image: henrygd/beszel-agent-intel:0.21.1
+          ports:
+            - name: agent
+              containerPort: 45877
+              hostPort: 45877
+              protocol: TCP
+          env:
+            - name: LISTEN
+              value: "45877"
+            - name: KEY
+              valueFrom:
+                secretKeyRef:
+                  name: beszel-agent-key
+                  key: key
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - PERFMON
+          volumeMounts:
+            - name: dri
+              mountPath: /dev/dri
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
