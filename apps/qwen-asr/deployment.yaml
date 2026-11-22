@@ -58,6 +58,8 @@ spec:
               value: "8177"
             - name: PYTHONUNBUFFERED
               value: "1"
+            - name: XDG_CACHE_HOME
+              value: /tmp
           securityContext:
             # Required for containerd cgroup device access to /dev/dri/renderD128 (Intel Arc Vulkan).
             privileged: true
@@ -71,15 +73,13 @@ spec:
             - name: dri
               mountPath: /dev/dri
           startupProbe:
-            httpGet:
-              path: /health
-              port: 8177
+            exec:
+              command: ["python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8177/health', timeout=2)"]
             periodSeconds: 5
             failureThreshold: 30
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 8177
+            exec:
+              command: ["python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8177/health', timeout=2)"]
             periodSeconds: 15
           resources:
             requests:
