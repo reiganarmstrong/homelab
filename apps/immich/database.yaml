@@ -25,6 +25,9 @@ spec:
       securityContext:
         runAsUser: 999
         runAsGroup: 999
+        # Avoid Ubuntu 26.04 AppArmor stacking denials on inter-process Postgres signals (SIGUSR1).
+        appArmorProfile:
+          type: Unconfined
       terminationGracePeriodSeconds: 180
       containers:
         - name: postgres

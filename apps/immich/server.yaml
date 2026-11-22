@@ -26,6 +26,9 @@ spec:
       securityContext:
         supplementalGroups:
           - 991
+        # Avoid Ubuntu 26.04 AppArmor stacking denials on tini signal forwarding.
+        appArmorProfile:
+          type: Unconfined
       containers:
         - name: immich-server
           image: ghcr.io/immich-app/immich-server:v3.3.5
