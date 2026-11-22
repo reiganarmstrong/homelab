@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matter-server
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: matter-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: matter-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: matter-server
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pi
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: matter-server
+          image: ghcr.io/matter-js/matterjs-server:stable
+          env:
+            - name: TZ
+              value: America/New_York
+            - name: STORAGE_PATH
+              value: /data
+            - name: LOG_LEVEL
+              value: info
+            - name: LISTEN_ADDRESS
+              value: 127.0.0.1
+            - name: NOBLE_BINDINGS
+              value: hci
+            - name: BLUETOOTH_ADAPTER
+              value: "0"
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          hostPath:
+            path: /srv/home-assistant/matter
+            type: Directory

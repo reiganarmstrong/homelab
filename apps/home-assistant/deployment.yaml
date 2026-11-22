@@ -7,7 +7,6 @@ metadata:
     app.kubernetes.io/name: home-assistant
 spec:
   replicas: 1
-  # Recreate strategy is required for ReadWriteOnce (RWO) local-path volumes.
   strategy:
     type: Recreate
   selector:
@@ -18,36 +17,11 @@ spec:
       labels:
         app.kubernetes.io/name: home-assistant
     spec:
-      # Pin Home Assistant to the Raspberry Pi (arm64) node.
+      # Pin Home Assistant to the Raspberry Pi (arm64) where the Zigbee USB dongle & Bluetooth live.
       nodeSelector:
         kubernetes.io/hostname: pi
-      # hostNetwork enables LAN device discovery (mDNS, HomeKit, Matter, Chromecast).
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      initContainers:
-        # Seed a minimal configuration.yaml on first boot that trusts the k3s pod CIDR
-        # so Tailscale Kubernetes Operator Ingress proxying works without HTTP 400 errors.
-        - name: init-trusted-proxies
-          image: busybox:1.37
-          command:
-            - sh
-            - -c
-            - |
-              if [ ! -f /config/configuration.yaml ]; then
-                cat <<'EOF' > /config/configuration.yaml
-              default_config:
-
-              http:
-                use_x_forwarded_for: true
-                trusted_proxies:
-                  - 10.42.0.0/16
-                  - 192.168.1.0/24
-                  - 127.0.0.1
-              EOF
-              fi
-          volumeMounts:
-            - name: config
-              mountPath: /config
       containers:
         - name: home-assistant
           image: ghcr.io/home-assistant/home-assistant:stable
@@ -58,9 +32,20 @@ spec:
           env:
             - name: TZ
               value: America/New_York
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: dbus
+              mountPath: /run/dbus
+              readOnly: true
+            - name: zigbee
+              mountPath: /dev/zigbee
           readinessProbe:
             httpGet:
               path: /manifest.json
@@ -72,7 +57,7 @@ spec:
             httpGet:
               path: /manifest.json
               port: http
-            initialDelaySeconds: 30
+            initialDelaySeconds: 45
             periodSeconds: 30
             timeoutSeconds: 5
           resources:
@@ -80,8 +65,17 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              memory: 1Gi
+              memory: 1536Mi
       volumes:
         - name: config
-          persistentVolumeClaim:
-            claimName: home-assistant-config
+          hostPath:
+            path: /srv/home-assistant/config
+            type: Directory
+        - name: dbus
+          hostPath:
+            path: /run/dbus
+            type: Directory
+        - name: zigbee
+          hostPath:
+            path: /dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_64691def6cc2ef1183a3c3138148b910-if00-port0
+            type: CharDevice

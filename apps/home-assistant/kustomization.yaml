@@ -5,7 +5,7 @@ namespace: home-assistant
 
 resources:
   - namespace.yaml
-  - pvc.yaml
   - deployment.yaml
+  - matter-server.yaml
   - service.yaml
   - ingress.yaml
