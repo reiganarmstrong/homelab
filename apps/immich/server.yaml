@@ -56,17 +56,21 @@ spec:
               mountPath: /data
             - name: dri
               mountPath: /dev/dri
+          startupProbe:
+            httpGet:
+              path: /api/server/ping
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /api/server/ping
               port: http
-            initialDelaySeconds: 15
             periodSeconds: 15
           livenessProbe:
             httpGet:
               path: /api/server/ping
               port: http
-            initialDelaySeconds: 30
             periodSeconds: 30
           resources:
             requests:

@@ -20,6 +20,11 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: pc
+      enableServiceLinks: false
+      # Run directly as UID/GID 70 (postgres on Alpine) so docker-entrypoint.sh skips gosu.
+      securityContext:
+        runAsUser: 70
+        runAsGroup: 70
       terminationGracePeriodSeconds: 180
       containers:
         - name: postgres
