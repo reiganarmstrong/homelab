@@ -26,7 +26,8 @@ jobs:
             infrastructure/tailscale-operator \
             infrastructure/argocd-ingress \
             apps/beszel \
-            apps/home-assistant; do
+            apps/home-assistant \
+            apps/jellyfin; do
             echo "Building $dir..."
             kustomize build "$dir" | kubeconform \
               -strict \

@@ -1,0 +1,36 @@
+# Least-privilege RBAC for the Jellyfin S3 backup CronJob.
+# Grants permission ONLY to scale and inspect `deployment/jellyfin` in `jellyfin`.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jellyfin-s3-backup
+  namespace: jellyfin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jellyfin-scaler
+  namespace: jellyfin
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    resourceNames: ["jellyfin"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jellyfin-s3-backup-scaler
+  namespace: jellyfin
+subjects:
+  - kind: ServiceAccount
+    name: jellyfin-s3-backup
+    namespace: jellyfin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jellyfin-scaler

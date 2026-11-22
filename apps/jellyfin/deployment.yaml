@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+  labels:
+    app.kubernetes.io/name: jellyfin
+spec:
+  replicas: 1
+  # Recreate prevents two pods from opening Jellyfin's SQLite DB simultaneously.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jellyfin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jellyfin
+    spec:
+      # Pin to `pc` where /srv/jellyfin data and the Intel iGPU live.
+      nodeSelector:
+        kubernetes.io/hostname: pc
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        # Host `render` group (GID 991) grants access to /dev/dri/renderD128 for QuickSync.
+        supplementalGroups:
+          - 991
+      containers:
+        - name: jellyfin
+          image: docker.io/jellyfin/jellyfin:12.3@sha256:2038fe038ab3876a80f6e7b7e0aef6607b032c7dc0c9b3ad3296d0b2eba3bbb5
+          ports:
+            - name: http
+              containerPort: 8096
+              protocol: TCP
+          env:
+            - name: TZ
+              value: America/New_York
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: cache
+              mountPath: /cache
+            - name: media
+              mountPath: /media
+              readOnly: true
+            - name: dri-render
+              mountPath: /dev/dri/renderD128
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 4Gi
+      volumes:
+        - name: config
+          hostPath:
+            path: /srv/jellyfin/config
+            type: Directory
+        - name: cache
+          hostPath:
+            path: /srv/jellyfin/cache
+            type: Directory
+        - name: media
+          hostPath:
+            path: /srv/jellyfin/media
+            type: Directory
+        - name: dri-render
+          hostPath:
+            path: /dev/dri/renderD128
+            type: CharDevice

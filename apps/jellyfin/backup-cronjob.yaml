@@ -1,0 +1,74 @@
+# Nightly 06:00 AM America/New_York S3 Glacier Deep Archive backup CronJob.
+# Replaces the legacy host `jellyfin-s3-backup.timer` systemd unit.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jellyfin-s3-backup
+  namespace: jellyfin
+spec:
+  schedule: "0 6 * * *"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: jellyfin-s3-backup
+        spec:
+          serviceAccountName: jellyfin-s3-backup
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: pc
+          containers:
+            - name: backup
+              # Amazon Linux / AWS CLI v2 container; installs kubectl + zstd + tar at runtime
+              image: public.ecr.aws/aws-cli/aws-cli:2.24.22
+              command:
+                - /bin/bash
+                - -ec
+                - |
+                  yum install -y -q tar zstd curl >/dev/null
+                  curl -fsSL "https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+                  chmod +x /usr/local/bin/kubectl
+                  /scripts/backup.sh
+              env:
+                - name: AWS_REGION
+                  value: us-east-1
+                - name: JELLYFIN_VERSION
+                  value: "12.3"
+              envFrom:
+                - secretRef:
+                    name: jellyfin-s3-backup-creds
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: jellyfin-config
+                  mountPath: /srv/jellyfin/config
+                  readOnly: true
+                - name: jellyfin-media
+                  mountPath: /srv/jellyfin/media
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+          volumes:
+            - name: script
+              configMap:
+                name: jellyfin-s3-backup-script
+                defaultMode: 0555
+            - name: jellyfin-config
+              hostPath:
+                path: /srv/jellyfin/config
+                type: Directory
+            - name: jellyfin-media
+              hostPath:
+                path: /srv/jellyfin/media
+                type: Directory
