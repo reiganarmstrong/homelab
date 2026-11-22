@@ -59,7 +59,8 @@ spec:
             - name: PYTHONUNBUFFERED
               value: "1"
           securityContext:
-            allowPrivilegeEscalation: false
+            # Required for containerd cgroup device access to /dev/dri/renderD128 (Intel Arc Vulkan).
+            privileged: true
           volumeMounts:
             - name: app-code
               mountPath: /opt/handy-stt
