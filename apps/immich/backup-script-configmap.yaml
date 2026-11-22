@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: immich-s3-backup-script
+  namespace: immich
+data:
+  backup.sh: |
+    #!/usr/bin/env bash
+    set -Eeuo pipefail
+
+    log() { printf '%s %s\n' "$(date --iso-8601=seconds)" "$*"; }
+
+    : "${S3_BUCKET:?S3_BUCKET is required}"
+    : "${DB_PASSWORD:?DB_PASSWORD is required}"
+    : "${AWS_REGION:=us-east-1}"
+
+    local_date=$(TZ=America/New_York date +%F)
+    local_month=$(TZ=America/New_York date +%Y-%m)
+    daily_key="database/daily/immich-db-${local_date}.sql.gz"
+    monthly_key="database/monthly/immich-db-${local_month}.sql.gz"
+
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf -- "$tmpdir"' EXIT
+
+    put_locked_object() {
+      local src="$1" key="$2" storage_class="$3" retention_days="$4"
+      local sha retain_until
+      sha=$(sha256sum "$src" | awk '{print $1}')
+      retain_until=$(date -u -d "+${retention_days} days" +%Y-%m-%dT%H:%M:%SZ)
+      aws s3api put-object \
+        --region "$AWS_REGION" \
+        --bucket "$S3_BUCKET" \
+        --key "$key" \
+        --body "$src" \
+        --storage-class "$storage_class" \
+        --server-side-encryption AES256 \
+        --checksum-algorithm SHA256 \
+        --metadata "sha256=${sha}" \
+        --object-lock-mode GOVERNANCE \
+        --object-lock-retain-until-date "$retain_until" >/dev/null
+    }
+
+    log "Validating AWS S3 bucket access"
+    aws s3api get-bucket-location --region "$AWS_REGION" --bucket "$S3_BUCKET" >/dev/null
+
+    dump_file="${tmpdir}/immich-db-${local_date}.sql.gz"
+    log "Dumping Immich PostgreSQL database"
+    PGPASSWORD="$DB_PASSWORD" pg_dump \
+      -h database -U postgres -d immich --clean --if-exists \
+      | gzip --rsyncable > "$dump_file"
+    gzip -t "$dump_file"
+
+    log "Uploading daily DB dump: s3://${S3_BUCKET}/${daily_key}"
+    put_locked_object "$dump_file" "$daily_key" STANDARD 30
+
+    if aws s3api head-object --region "$AWS_REGION" --bucket "$S3_BUCKET" --key "$monthly_key" >/dev/null 2>&1; then
+      log "Monthly recovery point already exists: s3://${S3_BUCKET}/${monthly_key}"
+    else
+      log "Uploading monthly DB dump to DEEP_ARCHIVE: s3://${S3_BUCKET}/${monthly_key}"
+      put_locked_object "$dump_file" "$monthly_key" DEEP_ARCHIVE 365
+    fi
+
+    log "Incrementally syncing critical Immich files to Deep Archive"
+    aws s3 sync \
+      /srv/immich/library/ \
+      "s3://${S3_BUCKET}/media/" \
+      --region "$AWS_REGION" \
+      --exclude "*" \
+      --include "library/*" \
+      --include "upload/*" \
+      --include "profile/*" \
+      --storage-class DEEP_ARCHIVE \
+      --sse AES256 \
+      --checksum-algorithm SHA256 \
+      --no-follow-symlinks \
+      --only-show-errors
+
+    log "Immich S3 backup completed cleanly"

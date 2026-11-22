@@ -67,9 +67,9 @@ Argo CD (root-app / App-of-Apps)
 ## Migration Roadmap
 
 - [x] Core platform architecture (`k3s` + `Argo CD` + `ESO` + `AWS SSM` + `Tailscale Operator`)
-- [x] Pilot app: **Beszel Hub** (`apps/beszel`, pinned to `pc`)
-- [ ] Join **Raspberry Pi (`pi`)** worker node via [bootstrap/scripts/join-pi.sh](bootstrap/scripts/join-pi.sh) + deploy **Home Assistant** (pinned to `pi`)
-- [ ] **Jellyfin** + Intel iGPU (`/dev/dri/renderD128`) device plugin + S3 Glacier backup `CronJob` (pinned to `pc`)
-- [ ] **Immich** (Server + OpenVINO ML + VectorChord Postgres + Valkey) + S3 Glacier backup `CronJob` (pinned to `pc`)
-- [ ] **Nextcloud** (App + Cron + Postgres + Redis) (pinned to `pc`)
+- [x] **Beszel Hub** + **Beszel Agent DaemonSet** (`beszel-agent-intel` with Intel iGPU on `pc`, `beszel-agent` on `pi`)
+- [x] Join **Raspberry Pi (`pi`)** worker node via [bootstrap/scripts/join-pi.sh](bootstrap/scripts/join-pi.sh) + **Home Assistant** (pinned to `pi`)
+- [x] **Jellyfin** + Intel QuickSync (`/dev/dri/renderD128`) + S3 Glacier backup `CronJob` with RBAC (pinned to `pc`)
+- [x] **Immich** (Server + OpenVINO ML + VectorChord Postgres + Valkey) + S3 Glacier backup `CronJob` (pinned to `pc`)
+- [x] **Nextcloud** (App + Cron + Postgres 17 + Redis 8) (pinned to `pc`)
 - [ ] Automated dependency PRs via **Renovate**

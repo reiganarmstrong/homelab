@@ -1,0 +1,17 @@
+# Exposes Nextcloud privately on your Tailnet at:
+#   https://nextcloud.<your-tailnet>.ts.net
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud-app
+  namespace: nextcloud
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - nextcloud
+  defaultBackend:
+    service:
+      name: nextcloud-app
+      port:
+        number: 80

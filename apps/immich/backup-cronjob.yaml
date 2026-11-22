@@ -1,0 +1,61 @@
+# Nightly 04:00 AM America/New_York Immich S3 Glacier Deep Archive backup CronJob.
+# Replaces the legacy host `immich-s3-backup.timer` systemd unit.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-s3-backup
+  namespace: immich
+spec:
+  schedule: "0 4 * * *"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: immich-s3-backup
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: pc
+          containers:
+            - name: backup
+              image: public.ecr.aws/aws-cli/aws-cli:2.24.22
+              command:
+                - /bin/bash
+                - -ec
+                - |
+                  yum install -y -q postgresql15 gzip >/dev/null
+                  /scripts/backup.sh
+              env:
+                - name: AWS_REGION
+                  value: us-east-1
+              envFrom:
+                - secretRef:
+                    name: immich-secrets
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: library
+                  mountPath: /srv/immich/library
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+          volumes:
+            - name: script
+              configMap:
+                name: immich-s3-backup-script
+                defaultMode: 0555
+            - name: library
+              hostPath:
+                path: /srv/immich/library
+                type: Directory

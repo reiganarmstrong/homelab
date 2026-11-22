@@ -27,7 +27,9 @@ jobs:
             infrastructure/argocd-ingress \
             apps/beszel \
             apps/home-assistant \
-            apps/jellyfin; do
+            apps/jellyfin \
+            apps/immich \
+            apps/nextcloud; do
             echo "Building $dir..."
             kustomize build "$dir" | kubeconform \
               -strict \
