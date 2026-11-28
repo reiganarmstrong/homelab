@@ -54,6 +54,9 @@ spec:
               value: redis
             - name: IMMICH_MACHINE_LEARNING_URL
               value: http://immich-machine-learning:3003
+          securityContext:
+            # Required for containerd cgroup device access to /dev/dri/renderD128 (Intel QuickSync/VAAPI).
+            privileged: true
           volumeMounts:
             - name: library
               mountPath: /data
@@ -65,22 +68,25 @@ spec:
               port: http
             periodSeconds: 5
             failureThreshold: 30
+            timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /api/server/ping
               port: http
             periodSeconds: 15
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /api/server/ping
               port: http
             periodSeconds: 30
+            timeoutSeconds: 5
           resources:
             requests:
               cpu: 100m
               memory: 512Mi
             limits:
-              memory: 4Gi
+              memory: 8Gi
       volumes:
         - name: library
           hostPath:
