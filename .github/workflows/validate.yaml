@@ -29,7 +29,6 @@ jobs:
             apps/home-assistant \
             apps/jellyfin \
             apps/immich \
-            apps/nextcloud \
             apps/qwen-asr; do
             echo "Building $dir..."
             kustomize build "$dir" | kubeconform \

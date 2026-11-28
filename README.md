@@ -71,6 +71,5 @@ Argo CD (root-app / App-of-Apps)
 - [x] Join **Raspberry Pi (`pi`)** worker node via [bootstrap/scripts/join-pi.sh](bootstrap/scripts/join-pi.sh) + **Home Assistant** (pinned to `pi`)
 - [x] **Jellyfin** + Intel QuickSync (`/dev/dri/renderD128`) + S3 Glacier backup `CronJob` with RBAC (pinned to `pc`)
 - [x] **Immich** (Server + OpenVINO ML + VectorChord Postgres + Valkey) + S3 Glacier backup `CronJob` (pinned to `pc`)
-- [x] **Nextcloud** (App + Cron + Postgres 17 + Redis 8) (pinned to `pc`)
 - [x] **Qwen3-ASR OpenAI Endpoint** (`apps/qwen-asr`, Intel Arc Vulkan GPU sidecar pattern, pinned to `pc`)
 - [ ] Automated dependency PRs via **Renovate**
